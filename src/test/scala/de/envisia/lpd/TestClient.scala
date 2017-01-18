@@ -1,10 +1,10 @@
 package de.envisia.lpd
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{ Files, Paths }
 
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.FileIO
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
+import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
