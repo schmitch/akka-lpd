@@ -35,10 +35,22 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
   }
 
   def print(host: String, queue: String, source: Source[ByteString, _], size: Long, filename: String): Future[Seq[String]] = {
-    print(host, 515, queue, source, size, filename)
+    print(host, 515, queue, source, Some(size), filename)
+  }
+
+  def print(host: String, queue: String, source: Source[ByteString, _], filename: String): Future[Seq[String]] = {
+    print(host, 515, queue, source, None, filename)
+  }
+
+  def print(host: String, port: Int, queue: String, source: Source[ByteString, _], filename: String): Future[Seq[String]] = {
+    print(host, port, queue, source, None, filename)
   }
 
   def print(host: String, port: Int, queue: String, source: Source[ByteString, _], size: Long, filename: String): Future[Seq[String]] = {
+    print(host, port, queue, source, Some(size), filename)
+  }
+
+  def print(host: String, port: Int, queue: String, source: Source[ByteString, _], size: Option[Long], filename: String): Future[Seq[String]] = {
     // sets the 3 digit job id
     if (jobId < 999) {
       jobId += 1

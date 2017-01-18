@@ -48,7 +48,7 @@ private[lpd] object LpdProtocol {
 
 }
 
-private[lpd] final class LpdProtocol(fileSize: Long, queue: String, jobId: Int, hostname: String, filename: String) extends GraphStage[BidiShape[ByteString, ByteString, ByteString, ByteString]] {
+private[lpd] final class LpdProtocol(fileSize: Option[Long], queue: String, jobId: Int, hostname: String, filename: String) extends GraphStage[BidiShape[ByteString, ByteString, ByteString, ByteString]] {
 
   import LpdProtocol._
 
@@ -83,7 +83,7 @@ private[lpd] final class LpdProtocol(fileSize: Long, queue: String, jobId: Int, 
         push(tcpOut, controlFile)
         nextState = 3
       } else if (state == 3) {
-        push(tcpOut, createCommand(3, s"dfa$bundledName", fileSize))
+        push(tcpOut, createCommand(3, s"dfa$bundledName", fileSize.getOrElse(0L)))
         nextState = 4
       }
     }
