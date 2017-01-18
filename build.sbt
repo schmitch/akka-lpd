@@ -1,3 +1,4 @@
+import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 import Dependencies._
 
 lazy val commonSettings = Seq(
@@ -15,9 +16,8 @@ lazy val commonSettings = Seq(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-o"),
   publishMavenStyle in ThisBuild := true,
   pomIncludeRepository in ThisBuild := { _ => false },
-  publishTo in ThisBuild := Some("Artifactory Realm" at "https://maven.envisia.de/internal")
+  publishTo in ThisBuild := Some("Artifactory Realm" at "https://maven.envisia.de/open")
 )
-
 
 lazy val `akka-lpd` = (project in file("."))
     .settings(commonSettings)
@@ -28,4 +28,44 @@ lazy val `akka-lpd` = (project in file("."))
       )
     )
 
+// To sync with Maven central, you need to supply the following information:
+pomExtra in Global := {
+  <url>https://github.com/sto/akka-lpr</url>
+      <licenses>
+        <license>
+          <name>Envisia License</name>
+          <url>http://git.envisia.de/envisia</url>
+        </license>
+      </licenses>
+      <scm>
+        <connection>scm:git@git.envisia.de:sto/akka-lpr.git</connection>
+        <developerConnection>scm:git:git@git.envisia.de:sto/akka-lpr.git</developerConnection>
+        <url>git.envisia.de/sto/akka-lpr</url>
+      </scm>
+      <developers>
+        <developer>
+          <id>schmitch</id>
+          <name>Christian Schmitt</name>
+          <url>https://git.envisia.de/schmitch</url>
+        </developer>
+        <developer>
+          <id>envisia</id>
+          <name>envisia GmbH</name>
+          <url>http://git.envisia.de/envisia</url>
+        </developer>
+      </developers>
+}
 
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  ReleaseStep(action = Command.process("publishSigned", _), enableCrossBuild = true),
+  setNextVersion,
+  commitNextVersion,
+  pushChanges
+)
