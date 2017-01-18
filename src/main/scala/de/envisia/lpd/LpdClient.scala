@@ -1,14 +1,14 @@
 package de.envisia.lpd
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{ Files, Path, Paths }
 
 import akka.actor.ActorSystem
 import akka.stream._
-import akka.stream.scaladsl.{FileIO, Flow, Keep, Sink, Source, Tcp}
+import akka.stream.scaladsl.{ FileIO, Flow, Keep, Sink, Source, Tcp }
 import akka.util.ByteString
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{ Await, Future }
 
 class LpdClient(host: String, port: Int = 515, hostname: String = "akka")(implicit system: ActorSystem, mat: Materializer) {
 
@@ -36,10 +36,10 @@ class LpdClient(host: String, port: Int = 515, hostname: String = "akka")(implic
     }
 
     FileIO.fromPath(path, chunkSize = 4096)
-        .via(connectionFlow)
-        .map(_.utf8String)
-        .toMat(Sink.seq)(Keep.right)
-        .run()
+      .via(connectionFlow)
+      .map(_.utf8String)
+      .toMat(Sink.seq)(Keep.right)
+      .run()
   }
 
 }

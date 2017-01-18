@@ -3,7 +3,7 @@ package de.envisia.lpd
 import java.nio.file.Paths
 
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
+import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Supervision }
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

@@ -4,7 +4,7 @@ import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
 
 import akka.stream._
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage.{ GraphStage, GraphStageLogic, InHandler, OutHandler }
 import akka.util.ByteString
 
 private[lpd] object LpdProtocol {
@@ -27,23 +27,23 @@ private[lpd] object LpdProtocol {
 
   def createCommand(ctrl: Byte, name: String, size: Long): ByteString = {
     ByteString.newBuilder
-        .putByte(ctrl)
-        .putBytes(size.toString.getBytes(charset))
-        .putByte(SP)
-        .putBytes(name.getBytes(charset))
-        .putByte(LF)
-        .result()
+      .putByte(ctrl)
+      .putBytes(size.toString.getBytes(charset))
+      .putByte(SP)
+      .putBytes(name.getBytes(charset))
+      .putByte(LF)
+      .result()
   }
 
   def buildControlFile(hostname: String, filename: String, printname: String): ByteString = {
     ByteString.newBuilder
-        .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
-        .putBytes(s"P$hostname".getBytes(charset)).putByte(LF) // User identification (needs to be included)
-        .putBytes(s"U$filename".getBytes(charset)).putByte(LF) // File is no longer needed
-        .putBytes(s"o$filename".getBytes(charset)).putByte(LF) // File sent as either f: Formatted or o: PostScript
-        .putBytes(s"N$printname".getBytes(charset)).putByte(LF)
-        .putByte(0)
-        .result()
+      .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
+      .putBytes(s"P$hostname".getBytes(charset)).putByte(LF) // User identification (needs to be included)
+      .putBytes(s"U$filename".getBytes(charset)).putByte(LF) // File is no longer needed
+      .putBytes(s"o$filename".getBytes(charset)).putByte(LF) // File sent as either f: Formatted or o: PostScript
+      .putBytes(s"N$printname".getBytes(charset)).putByte(LF)
+      .putByte(0)
+      .result()
   }
 
 }
