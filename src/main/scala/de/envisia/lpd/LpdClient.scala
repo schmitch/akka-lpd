@@ -1,14 +1,15 @@
 package de.envisia.lpd
 
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.{Files, Path, Paths}
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream._
-import akka.stream.scaladsl.{ FileIO, Flow, Keep, Sink, Source, Tcp }
+import akka.stream.scaladsl.{FileIO, Flow, Keep, Sink, Source, Tcp}
 import akka.util.ByteString
 
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.{Await, Future}
 
 class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Materializer) {
 
@@ -30,6 +31,10 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
   }
 
   def print(host: String, port: Int, queue: String, path: Path, filename: String): Future[Seq[String]] = {
+    print(host, port, queue, FileIO.fromPath(path, chunkSize = 4096), Files.size(path), filename)
+  }
+
+  def print(host: String, port: Int, queue: String, source: Source[ByteString, Any], size: Long, filename: String): Future[Seq[String]] = {
     // sets the 3 digit job id
     if (jobId < 999) {
       jobId += 1
@@ -38,14 +43,13 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
     }
 
     val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
-      flow(host, port).join(new LpdProtocol(Files.size(path), queue, jobId, hostname, filename))
+      flow(host, port).join(new LpdProtocol(size, queue, jobId, hostname, filename))
     }
 
-    FileIO.fromPath(path, chunkSize = 4096)
-      .via(connectionFlow)
-      .map(_.utf8String)
-      .toMat(Sink.seq)(Keep.right)
-      .run()
+    source.via(connectionFlow)
+        .map(_.utf8String)
+        .toMat(Sink.seq)(Keep.right)
+        .run()
   }
 
 }
