@@ -10,18 +10,26 @@ import akka.util.ByteString
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
 
-class LpdClient(host: String, port: Int = 515, hostname: String = "akka")(implicit system: ActorSystem, mat: Materializer) {
+class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Materializer) {
 
   import LpdProtocol._
 
-  private def flow = Tcp().outgoingConnection(host, port)
+  private def flow(host: String, port: Int = 515) = Tcp().outgoingConnection(host, port)
   @volatile private var jobId: Int = 11
 
-  def queue(queue: String): Future[String] = {
-    Source.single(createBaseCommand(4, queue)).via(flow).runFold("")((s, bs) => s + bs.utf8String)
+  def queue(host: String, port: Int, queue: String): Future[String] = {
+    Source.single(createBaseCommand(4, queue)).via(flow(host, port)).runFold("")((s, bs) => s + bs.utf8String)
   }
 
-  def print(queue: String, path: Path): Future[Seq[String]] = {
+  def queue(host: String, queue: String): Future[String] = {
+    this.queue(host, 515, queue)
+  }
+
+  def print(host: String, queue: String, path: Path, filename: String): Future[Seq[String]] = {
+    print(host, 515, queue, path, filename)
+  }
+
+  def print(host: String, port: Int, queue: String, path: Path, filename: String): Future[Seq[String]] = {
     // sets the 3 digit job id
     if (jobId < 999) {
       jobId += 1
@@ -29,10 +37,8 @@ class LpdClient(host: String, port: Int = 515, hostname: String = "akka")(implic
       jobId = 12
     }
 
-    val filename = "7440018391_WLT_WE_77330.ps"
-
     val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
-      flow.join(new LpdProtocol(Files.size(path), queue, jobId, hostname, filename))
+      flow(host, port).join(new LpdProtocol(Files.size(path), queue, jobId, hostname, filename))
     }
 
     FileIO.fromPath(path, chunkSize = 4096)
