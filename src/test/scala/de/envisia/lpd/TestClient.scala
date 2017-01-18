@@ -17,7 +17,7 @@ object TestClient {
       Supervision.Stop
     }))
 
-    Await.result(new LpdClient("172.16.206.100").print("Cups-PDF", Paths.get("/Users/schmitch/sto/tmp/7440018391_WLT_WE_77330.ps")), 10.minutes)
+    Await.result(new LpdClient().print("172.16.206.100", "Cups-PDF", Paths.get("/Users/schmitch/sto/tmp/7440018391_WLT_WE_77330.ps"), "7440018391_WLT_WE_77330.ps"), 10.minutes)
     Await.result(system.terminate(), 10.minutes)
   }
 
