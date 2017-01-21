@@ -56,6 +56,8 @@ pomExtra in Global := {
       </developers>
 }
 
+releaseCrossBuild := true
+
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,
   inquireVersions,
