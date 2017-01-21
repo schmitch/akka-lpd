@@ -6,7 +6,7 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 lazy val commonSettings = Seq(
   organization := "de.envisia",
   scalaVersion := "2.12.1",
-  crossScalaVersions in ThisBuild := Seq(scalaVersion.value, "2.11.8"),
+  crossScalaVersions := Seq(scalaVersion.value, "2.11.8"),
   scalacOptions in(Compile, doc) ++= Seq(
     "-target:jvm-1.8",
     "-deprecation",
