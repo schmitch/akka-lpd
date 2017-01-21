@@ -1,5 +1,7 @@
-import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 import Dependencies._
+import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
+import scalariform.formatter.preferences._
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 lazy val commonSettings = Seq(
   organization := "de.envisia",
@@ -19,8 +21,18 @@ lazy val commonSettings = Seq(
   publishTo in ThisBuild := Some("Artifactory Realm" at "https://maven.envisia.de/open")
 )
 
+val formattingSettings = Seq(
+  ScalariformKeys.preferences := ScalariformKeys.preferences.value
+      .setPreference(SpacesAroundMultiImports, true)
+      .setPreference(SpaceInsideParentheses, false)
+      .setPreference(DanglingCloseParenthesis, Preserve)
+      .setPreference(PreserveSpaceBeforeArguments, true)
+      .setPreference(DoubleIndentClassDeclaration, true)
+)
+
 lazy val `akka-lpd` = (project in file("."))
     .settings(commonSettings)
+    .settings(formattingSettings)
     .settings(
       libraryDependencies ++= Seq(
         akka,
