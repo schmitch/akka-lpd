@@ -24,19 +24,19 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
     this.queue(host, 515, queue)
   }
 
-  def print(host: String, queue: String, path: Path, filename: String): Future[Seq[String]] = {
-    print(host, 515, queue, path, filename)
+  def print(host: String, username: String, queue: String, path: Path, filename: String): Future[Seq[String]] = {
+    print(host, 515, username, queue, path, filename)
   }
 
-  def print(host: String, port: Int, queue: String, path: Path, filename: String): Future[Seq[String]] = {
-    print(host, port, queue, FileIO.fromPath(path, chunkSize = 4096), Files.size(path), filename)
+  def print(host: String, port: Int, username: String, queue: String, path: Path, filename: String): Future[Seq[String]] = {
+    print(host, port, username, queue, FileIO.fromPath(path, chunkSize = 4096), Files.size(path), filename)
   }
 
-  def print(host: String, queue: String, source: Source[ByteString, _], size: Long, filename: String): Future[Seq[String]] = {
-    print(host, 515, queue, source, size, filename)
+  def print(host: String, username: String, queue: String, source: Source[ByteString, _], size: Long, filename: String): Future[Seq[String]] = {
+    print(host, 515, username, queue, source, size, filename)
   }
 
-  def print(host: String, port: Int, queue: String, source: Source[ByteString, _], size: Long, filename: String): Future[Seq[String]] = {
+  def print(host: String, port: Int, username: String, queue: String, source: Source[ByteString, _], size: Long, filename: String): Future[Seq[String]] = {
     // sets the 3 digit job id
     if (jobId < 999) {
       jobId += 1
@@ -45,7 +45,7 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
     }
 
     val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
-      flow(host, port).join(new LpdProtocol(size, queue, jobId, hostname, filename))
+      flow(host, port).join(new LpdProtocol(size, username, queue, jobId, hostname, filename))
     }
 
     source.via(connectionFlow)

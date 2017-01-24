@@ -4,7 +4,7 @@ import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
 
 import akka.stream._
-import akka.stream.stage.{ GraphStage, GraphStageLogic, InHandler, OutHandler }
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
 private[lpd] object LpdProtocol {
@@ -27,27 +27,29 @@ private[lpd] object LpdProtocol {
 
   def createCommand(ctrl: Byte, name: String, size: Long): ByteString = {
     ByteString.newBuilder.putByte(ctrl)
-      .putBytes(size.toString.getBytes(charset))
-      .putByte(SP)
-      .putBytes(name.getBytes(charset))
-      .putByte(LF)
-      .result()
+        .putBytes(size.toString.getBytes(charset))
+        .putByte(SP)
+        .putBytes(name.getBytes(charset))
+        .putByte(LF)
+        .result()
   }
 
-  def buildControlFile(hostname: String, filename: String, printname: String): ByteString = {
+  def buildControlFile(id: Int, hostname: String, username: String, filename: String, printname: String): ByteString = {
+    val bundledName = s"dfa${"%03d".format(id)}$hostname"
     ByteString.newBuilder
-      .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
-      .putBytes(s"P$hostname".getBytes(charset)).putByte(LF) // User identification (needs to be included)
-      .putBytes(s"U$filename".getBytes(charset)).putByte(LF) // File is no longer needed
-      .putBytes(s"o$filename".getBytes(charset)).putByte(LF) // File sent as either f: Formatted or o: PostScript
-      .putBytes(s"N$printname".getBytes(charset)).putByte(LF)
-      .putByte(0)
-      .result()
+        .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
+        .putBytes(s"P$username".getBytes(charset)).putByte(LF) // User identification (needs to be included)
+        .putBytes(s"U$bundledName".getBytes(charset)).putByte(LF) // File is no longer needed
+        .putBytes(s"l$bundledName".getBytes(charset)).putByte(LF) // File sent as either l: Print with Control Chars f: Formatted or o: PostScript
+        .putBytes(s"N$filename".getBytes(charset)).putByte(LF)
+        .putBytes(s"J$filename".getBytes(charset)).putByte(LF)
+        .putByte(0)
+        .result()
   }
 
 }
 
-private[lpd] final class LpdProtocol(fileSize: Long, queue: String, jobId: Int, hostname: String, filename: String) extends GraphStage[BidiShape[ByteString, ByteString, ByteString, ByteString]] {
+private[lpd] final class LpdProtocol(fileSize: Long, username: String, queue: String, jobId: Int, hostname: String, filename: String) extends GraphStage[BidiShape[ByteString, ByteString, ByteString, ByteString]] {
 
   import LpdProtocol._
 
@@ -58,7 +60,7 @@ private[lpd] final class LpdProtocol(fileSize: Long, queue: String, jobId: Int, 
   private val tcpOut = Outlet[ByteString]("Tcp.out")
 
   private val bundledName = s"${"%03d".format(jobId)}$hostname"
-  private val controlFile = buildControlFile(hostname, s"dfa$bundledName", filename)
+  private val controlFile = buildControlFile(jobId, hostname, username, hostname, filename)
 
   override def shape: BidiShape[ByteString, ByteString, ByteString, ByteString] = BidiShape.of(lpdIn, lpdOut, tcpIn, tcpOut)
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
