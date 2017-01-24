@@ -6,4 +6,8 @@ Does not use Port 721 - 732, instead auto-assign a higher port. Most Servers wil
 
 Always chunk and guess file size
 
-Works against most Xerox WorkCentre, but not against production machines with Xerox Fiery (Xerox Colour 60)
+Works against most Xerox WorkCentre and Fiery Controller
+
+## TODO
+
+Timeout/Failure if the TCP connection will be closed before we have 3 ACKs 
