@@ -1,10 +1,11 @@
 package de.envisia.lpd
 
-import java.nio.file.{ Files, Path }
+import java.net.InetSocketAddress
+import java.nio.file.{Files, Path}
 
 import akka.actor.ActorSystem
 import akka.stream._
-import akka.stream.scaladsl.{ FileIO, Flow, Keep, Sink, Source, Tcp }
+import akka.stream.scaladsl.{FileIO, Flow, Keep, Sink, Source, Tcp}
 import akka.util.ByteString
 
 import scala.concurrent.Future
@@ -13,8 +14,12 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
 
   import LpdProtocol._
 
-  private def flow(host: String, port: Int = 515) = Tcp().outgoingConnection(host, port)
-  @volatile private var jobId: Int = 11
+  private def flow(host: String, port: Int = 515) = {
+    val remote = InetSocketAddress.createUnresolved(host, port)
+    val local = None // Some(new InetSocketAddress(1025))
+    Tcp().outgoingConnection(remote, None)
+  }
+  @volatile private var jobId: Int = 638
 
   def queue(host: String, port: Int, queue: String): Future[String] = {
     Source.single(createBaseCommand(4, queue)).via(flow(host, port)).runFold("")((s, bs) => s + bs.utf8String)
@@ -41,7 +46,7 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
     if (jobId < 999) {
       jobId += 1
     } else {
-      jobId = 12
+      jobId = 852
     }
 
     val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {

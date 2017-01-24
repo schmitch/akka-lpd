@@ -4,7 +4,7 @@ import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
 
 import akka.stream._
-import akka.stream.stage.{ GraphStage, GraphStageLogic, InHandler, OutHandler }
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
 private[lpd] object LpdProtocol {
@@ -27,24 +27,24 @@ private[lpd] object LpdProtocol {
 
   def createCommand(ctrl: Byte, name: String, size: Long): ByteString = {
     ByteString.newBuilder.putByte(ctrl)
-      .putBytes(size.toString.getBytes(charset))
-      .putByte(SP)
-      .putBytes(name.getBytes(charset))
-      .putByte(LF)
-      .result()
+        .putBytes(size.toString.getBytes(charset))
+        .putByte(SP)
+        .putBytes(name.getBytes(charset))
+        .putByte(LF)
+        .result()
   }
 
   def buildControlFile(id: Int, hostname: String, username: String, filename: String, printname: String): ByteString = {
     val bundledName = s"dfa${"%03d".format(id)}$hostname"
     ByteString.newBuilder
-      .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
-      .putBytes(s"P$username".getBytes(charset)).putByte(LF) // User identification (needs to be included)
-      .putBytes(s"U$bundledName".getBytes(charset)).putByte(LF) // File is no longer needed
-      .putBytes(s"l$bundledName".getBytes(charset)).putByte(LF) // File sent as either l: Print with Control Chars f: Formatted or o: PostScript
-      .putBytes(s"N$filename".getBytes(charset)).putByte(LF)
-      .putBytes(s"J$filename".getBytes(charset)).putByte(LF)
-      .putByte(0)
-      .result()
+        .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
+        .putBytes(s"P$username".getBytes(charset)).putByte(LF) // User identification (needs to be included)
+        .putBytes(s"J$filename".getBytes(charset)).putByte(LF)
+        .putBytes(s"l$bundledName".getBytes(charset)).putByte(LF) // File sent as either l: Print with Control Chars f: Formatted or o: PostScript
+        .putBytes(s"U$bundledName".getBytes(charset)).putByte(LF) // File is no longer needed
+        .putBytes(s"N$filename".getBytes(charset)).putByte(LF)
+        .putByte(0)
+        .result()
   }
 
 }
