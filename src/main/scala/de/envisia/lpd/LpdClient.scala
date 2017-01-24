@@ -19,7 +19,7 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
     val local = None // Some(new InetSocketAddress(1025))
     Tcp().outgoingConnection(remote, None)
   }
-  @volatile private var jobId: Int = 638
+  @volatile private var jobId: Int = 1
 
   def queue(host: String, port: Int, queue: String): Future[String] = {
     Source.single(createBaseCommand(4, queue)).via(flow(host, port)).runFold("")((s, bs) => s + bs.utf8String)
@@ -46,7 +46,7 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
     if (jobId < 999) {
       jobId += 1
     } else {
-      jobId = 852
+      jobId = 1
     }
 
     val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
