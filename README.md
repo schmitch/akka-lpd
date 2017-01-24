@@ -10,4 +10,4 @@ Works against most Xerox WorkCentre and Fiery Controller
 
 ## TODO
 
-Timeout/Failure if the TCP connection will be closed before we have 3 ACKs 
+- Java LPD client
