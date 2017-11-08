@@ -5,8 +5,8 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 lazy val commonSettings = Seq(
   organization := "de.envisia",
-  scalaVersion := "2.12.1",
-  crossScalaVersions := Seq(scalaVersion.value, "2.11.8"),
+  scalaVersion := "2.12.4",
+  crossScalaVersions := Seq(scalaVersion.value, "2.11.11"),
   scalacOptions in(Compile, doc) ++= Seq(
     "-target:jvm-1.8",
     "-deprecation",
@@ -18,7 +18,7 @@ lazy val commonSettings = Seq(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-o"),
   publishMavenStyle in ThisBuild := true,
   pomIncludeRepository in ThisBuild := { _ => false },
-  publishTo in ThisBuild := Some("Artifactory Realm" at "https://maven.envisia.de/open")
+  publishTo in ThisBuild := Some("Nexus Internal" at "https://nexus.envisia.de/internal")
 )
 
 val formattingSettings = Seq(
@@ -27,7 +27,7 @@ val formattingSettings = Seq(
       .setPreference(SpaceInsideParentheses, false)
       .setPreference(DanglingCloseParenthesis, Preserve)
       .setPreference(PreserveSpaceBeforeArguments, true)
-      .setPreference(DoubleIndentClassDeclaration, true)
+      .setPreference(DoubleIndentConstructorArguments, true)
 )
 
 lazy val `akka-lpd` = (project in file("."))
@@ -69,7 +69,7 @@ pomExtra in Global := {
 }
 
 releaseCrossBuild := true
-
+releasePublishArtifactsAction := PgpKeys.publishSigned.value
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,
   inquireVersions,
@@ -78,7 +78,7 @@ releaseProcess := Seq[ReleaseStep](
   setReleaseVersion,
   commitReleaseVersion,
   tagRelease,
-  ReleaseStep(action = Command.process("publishSigned", _), enableCrossBuild = true),
+  publishArtifacts,                       // : ReleaseStep, checks whether `publishTo` is properly set up
   setNextVersion,
   commitNextVersion,
   pushChanges
