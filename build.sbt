@@ -18,7 +18,7 @@ lazy val commonSettings = Seq(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-o"),
   publishMavenStyle in ThisBuild := true,
   pomIncludeRepository in ThisBuild := { _ => false },
-  publishTo in ThisBuild := Some("Nexus Internal" at "https://nexus.envisia.de/internal")
+  publishTo in ThisBuild := Some("Nexus Internal" at "https://nexus.envisia.de/repository/internal/")
 )
 
 val formattingSettings = Seq(
