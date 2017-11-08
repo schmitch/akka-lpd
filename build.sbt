@@ -4,6 +4,7 @@ import scalariform.formatter.preferences._
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 lazy val commonSettings = Seq(
+  updateOptions := updateOptions.value.withGigahorse(false),
   organization := "de.envisia",
   scalaVersion := "2.12.4",
   crossScalaVersions := Seq(scalaVersion.value, "2.11.11"),
