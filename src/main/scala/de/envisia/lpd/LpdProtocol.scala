@@ -46,7 +46,6 @@ private[lpd] object LpdProtocol {
 
   def buildControlFile(hostname: String, username: String, filename: String): ByteString = {
     val bundledName = s"dfa$filename"
-    println(s"Name: $bundledName")
     ByteString.newBuilder
       .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
       .putBytes(s"P$username".getBytes(charset)).putByte(LF) // User identification (needs to be included)
