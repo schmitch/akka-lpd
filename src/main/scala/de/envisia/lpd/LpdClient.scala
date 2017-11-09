@@ -11,7 +11,8 @@ import akka.util.ByteString
 
 import scala.concurrent.Future
 
-class LpdClient(hostname: String = "akka")(implicit system: ActorSystem,
+class LpdClient(hostname: String = "akka")(implicit
+    system: ActorSystem,
     mat: Materializer) {
 
   import LpdProtocol._
@@ -26,7 +27,7 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem,
 
   private def getJobId: Int = {
     // creates a 3 digit job id
-    atomicInt.updateAndGet { value =>
+    atomicInt.updateAndGet { value: Int =>
       val newValue = value + 1
       if (newValue == 999) 1 else newValue
     }
@@ -34,30 +35,33 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem,
 
   def queue(host: String, port: Int, queue: String): Future[String] = {
     Source
-        .single(createBaseCommand(4, queue))
-        .via(flow(host, port))
-        .runFold("")((s, bs) => s + bs.utf8String)
+      .single(createBaseCommand(4, queue))
+      .via(flow(host, port))
+      .runFold("")((s, bs) => s + bs.utf8String)
   }
 
   def queue(host: String, queue: String): Future[String] = {
     this.queue(host, 515, queue)
   }
 
-  def print(host: String,
-      username: String,
-      queue: String,
-      path: Path,
-      filename: String): Future[Seq[String]] = {
+  def print(
+    host: String,
+    username: String,
+    queue: String,
+    path: Path,
+    filename: String): Future[Seq[String]] = {
     print(host, 515, username, queue, path, filename)
   }
 
-  def print(host: String,
-      port: Int,
-      username: String,
-      queue: String,
-      path: Path,
-      filename: String): Future[Seq[String]] = {
-    print(host,
+  def print(
+    host: String,
+    port: Int,
+    username: String,
+    queue: String,
+    path: Path,
+    filename: String): Future[Seq[String]] = {
+    print(
+      host,
       port,
       username,
       queue,
@@ -66,33 +70,34 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem,
       filename)
   }
 
-  def print(host: String,
-      username: String,
-      queue: String,
-      source: Source[ByteString, _],
-      size: Long,
-      filename: String): Future[Seq[String]] = {
+  def print(
+    host: String,
+    username: String,
+    queue: String,
+    source: Source[ByteString, _],
+    size: Long,
+    filename: String): Future[Seq[String]] = {
     print(host, 515, username, queue, source, size, filename)
   }
 
-  def print(host: String,
-      port: Int,
-      username: String,
-      queue: String,
-      source: Source[ByteString, _],
-      size: Long,
-      filename: String): Future[Seq[String]] = {
-    val connectionFlow
-    : Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
+  def print(
+    host: String,
+    port: Int,
+    username: String,
+    queue: String,
+    source: Source[ByteString, _],
+    size: Long,
+    filename: String): Future[Seq[String]] = {
+    val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
       flow(host, port).join(
         new LpdProtocol(size, username, queue, getJobId, hostname, filename))
     }
 
     source
-        .via(connectionFlow)
-        .map(_.utf8String)
-        .toMat(Sink.seq)(Keep.right)
-        .run()
+      .via(connectionFlow)
+      .map(_.utf8String)
+      .toMat(Sink.seq)(Keep.right)
+      .run()
   }
 
 }
