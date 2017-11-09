@@ -131,7 +131,6 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       case (snmp, transport, target) =>
         val jobReason = (for {
           index <- findJobIndex(snmp, target, transport, name)
-          _ = println(s"current job index: $index")
           state <- status(snmp, target, transport, index)
         } yield (index, state)).flatMap {
           case (index, state) =>
