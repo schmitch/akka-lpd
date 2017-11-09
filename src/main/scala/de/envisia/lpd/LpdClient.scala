@@ -2,6 +2,7 @@ package de.envisia.lpd
 
 import java.net.InetSocketAddress
 import java.nio.file.{ Files, Path }
+import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
 import akka.stream._
@@ -16,10 +17,16 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
 
   private def flow(host: String, port: Int = 515) = {
     val remote = InetSocketAddress.createUnresolved(host, port)
-    val local = None // Some(new InetSocketAddress(1025))
+    // val local = None // Some(new InetSocketAddress(1025))
     Tcp().outgoingConnection(remote, None)
   }
-  @volatile private var jobId: Int = 1
+
+  private val atomicInt = new AtomicInteger(1)
+
+  private def getJobId: Int = {
+    // creates a 3 digit job id
+    atomicInt.updateAndGet(x => if (x + 1 == 999) 1 else x + 1)
+  }
 
   def queue(host: String, port: Int, queue: String): Future[String] = {
     Source.single(createBaseCommand(4, queue)).via(flow(host, port)).runFold("")((s, bs) => s + bs.utf8String)
@@ -42,15 +49,8 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
   }
 
   def print(host: String, port: Int, username: String, queue: String, source: Source[ByteString, _], size: Long, filename: String): Future[Seq[String]] = {
-    // sets the 3 digit job id
-    if (jobId < 999) {
-      jobId += 1
-    } else {
-      jobId = 1
-    }
-
     val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
-      flow(host, port).join(new LpdProtocol(size, username, queue, jobId, hostname, filename))
+      flow(host, port).join(new LpdProtocol(size, username, queue, getJobId, hostname, filename))
     }
 
     source.via(connectionFlow)
