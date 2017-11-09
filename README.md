@@ -10,4 +10,5 @@ Works against most Xerox WorkCentre and Fiery Controller
 
 ## TODO
 
+- SNMP Client
 - Java LPD client

@@ -35,6 +35,7 @@ lazy val `akka-lpd` = (project in file("."))
     .settings(formattingSettings)
     .settings(
       libraryDependencies ++= Seq(
+        "org.snmp4j" % "snmp4j" % "2.5.8",
         akka,
         scalaTest % Test
       )

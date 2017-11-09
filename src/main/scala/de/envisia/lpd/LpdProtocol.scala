@@ -15,7 +15,7 @@ private[lpd] object LpdProtocol {
   private[lpd] final val SP = ' '
   private[lpd] final val EMPTY = ByteString(0)
 
-  private implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
+  private implicit val byteOrder: ByteOrder = ByteOrder.LITTLE_ENDIAN
 
   def createSimpleCommand(ctrl: Byte): ByteString = {
     ByteString.newBuilder.putByte(ctrl).putByte(LF).result()
@@ -23,6 +23,16 @@ private[lpd] object LpdProtocol {
 
   def createBaseCommand(ctrl: Byte, queue: String): ByteString = {
     ByteString.newBuilder.putByte(ctrl).putBytes(queue.getBytes(charset)).putByte(LF).result()
+  }
+
+  def createExtendedCommand(ctrl: Byte, queue: String, additional: String): ByteString = {
+    ByteString
+      .newBuilder
+      .putByte(ctrl)
+      .putBytes(queue.getBytes(charset))
+      .putByte(SP)
+      .putBytes(additional.getBytes(charset))
+      .putByte(LF).result()
   }
 
   def createCommand(ctrl: Byte, name: String, size: Long): ByteString = {
@@ -34,13 +44,14 @@ private[lpd] object LpdProtocol {
       .result()
   }
 
-  def buildControlFile(id: Int, hostname: String, username: String, filename: String, printname: String): ByteString = {
-    val bundledName = s"dfa${"%03d".format(id)}$hostname"
+  def buildControlFile(hostname: String, username: String, filename: String): ByteString = {
+    val bundledName = s"dfa$filename"
+    println(s"Name: $bundledName")
     ByteString.newBuilder
       .putBytes(s"H$hostname".getBytes(charset)).putByte(LF) // Hostname
       .putBytes(s"P$username".getBytes(charset)).putByte(LF) // User identification (needs to be included)
       .putBytes(s"J$filename".getBytes(charset)).putByte(LF)
-      .putBytes(s"l$bundledName".getBytes(charset)).putByte(LF) // File sent as either l: Print with Control Chars f: Formatted or o: PostScript
+      .putBytes(s"f$bundledName".getBytes(charset)).putByte(LF) // File sent as either l: Print with Control Chars f: Formatted or o: PostScript
       .putBytes(s"U$bundledName".getBytes(charset)).putByte(LF) // File is no longer needed
       .putBytes(s"N$filename".getBytes(charset)).putByte(LF)
       .putByte(0)
@@ -59,8 +70,10 @@ private[lpd] final class LpdProtocol(fileSize: Long, username: String, queue: St
   private val tcpIn = Inlet[ByteString]("Tcp.in")
   private val tcpOut = Outlet[ByteString]("Tcp.out")
 
-  private val bundledName = s"${"%03d".format(jobId)}$hostname"
-  private val controlFile = buildControlFile(jobId, hostname, username, hostname, filename)
+  // FIXME: this would be correct according to the spec: s"${"%03d".format(jobId)}$filename"
+  // however it is correctly wrong and the bundledName is just the fileName, jobId is ignored
+  private val bundledName = filename
+  private val controlFile = buildControlFile(hostname, username, bundledName)
 
   override def shape: BidiShape[ByteString, ByteString, ByteString, ByteString] = BidiShape.of(lpdIn, lpdOut, tcpIn, tcpOut)
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
@@ -98,12 +111,13 @@ private[lpd] final class LpdProtocol(fileSize: Long, username: String, queue: St
             sendState()
             wasPulled = false
           }
+
           push(lpdOut, ele)
-        } else if (state == 4) {
+        } else if (ele == EMPTY && state == 4) {
           // in state 4 if we get a positive ACK we can safely timeout
           completeStage()
         } else {
-          fail(lpdOut, new Exception(s"Could not ACK: ${ele.utf8String}"))
+          fail(lpdOut, new Exception(s"Could not ACK ($state)"))
         }
       }
 
