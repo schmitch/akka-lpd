@@ -18,8 +18,8 @@ object TestClient {
     implicit val mat = ActorMaterializer(ActorMaterializerSettings(system))
     val path = Paths.get("/Users/schmitch/TestKRONEN.pdf")
     val client = new LpdClient()
-    val uuid = s"JOB60005"
-    val ip = "192.168.33.37"
+    val uuid = s"JOB1"
+    val ip = "192.168.179.3"
 
     val ret = Await.result(
       client

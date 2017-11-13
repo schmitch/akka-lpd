@@ -12,6 +12,9 @@ import scala.annotation.tailrec
 import scala.util.{ Failure, Success, Try }
 
 class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
+
+  import SnmpStatusClient._
+
   private[this] def transport = new DefaultUdpTransportMapping
   private[this] def snmpClient = {
     val inner = new Snmp(transport)
@@ -61,24 +64,27 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       snmp: Snmp,
       target: CommunityTarget,
       transportMapping: DefaultUdpTransportMapping,
-      name: String): Try[Int] = {
+      name: String,
+  ): Try[Int] = {
     @tailrec
-    def call(current: OID): Try[Int] = {
+    def call(current: OID, currentTries: Int): Try[Int] = {
       request(snmp, target, transportMapping, current, PDU.GETNEXT) match {
         case Success(ret) =>
           val oid = ret.getOid
           // we need to check if oid startsWith the queried oid, else we have bogus values
           if (oid.startsWith(current)) {
             Success(ret.getVariable.toInt)
+          } else if (currentTries >= 0) {
+            TimeUnit.MILLISECONDS.sleep(500)
+            call(current, currentTries - 1)
           } else {
-            TimeUnit.MILLISECONDS.sleep(250)
-            call(current)
+            Failure(new JobIndexNotFoundException)
           }
         case Failure(t) => Failure(t)
       }
     }
 
-    call(nameOid(name))
+    call(nameOid(name), 3)
   }
 
   def status(
@@ -141,7 +147,15 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
         snmp.close()
         transport.close()
         jobReason
+    }.recover {
+      case _: JobIndexNotFoundException => JobReason.Unknown
     }
   }
+
+}
+
+object SnmpStatusClient {
+
+  class JobIndexNotFoundException extends Exception
 
 }
