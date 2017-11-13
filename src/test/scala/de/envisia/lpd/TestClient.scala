@@ -16,9 +16,9 @@ object TestClient {
     implicit val system = ActorSystem()
     implicit val ec = system.dispatcher
     implicit val mat = ActorMaterializer(ActorMaterializerSettings(system))
-    val path = Paths.get("/Users/schmitch/TestKRONEN.pdf")
+    val path = Paths.get("/Users/schmitch/z_important/TestKRONEN.pdf")
     val client = new LpdClient()
-    val uuid = s"JOB1"
+    val uuid = s"JOB2"
     val ip = "192.168.179.3"
 
     val ret = Await.result(

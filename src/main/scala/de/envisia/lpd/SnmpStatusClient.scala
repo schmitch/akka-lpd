@@ -75,7 +75,7 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
           if (oid.startsWith(current)) {
             Success(ret.getVariable.toInt)
           } else if (currentTries >= 0) {
-            TimeUnit.MILLISECONDS.sleep(500)
+            TimeUnit.MILLISECONDS.sleep(1000)
             call(current, currentTries - 1)
           } else {
             Failure(new JobIndexNotFoundException)
@@ -84,7 +84,7 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       }
     }
 
-    call(nameOid(name), 3)
+    call(nameOid(name), 20)
   }
 
   def status(
