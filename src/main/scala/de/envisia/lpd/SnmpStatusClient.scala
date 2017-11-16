@@ -9,19 +9,15 @@ import org.snmp4j.transport.DefaultUdpTransportMapping
 import org.snmp4j.{ CommunityTarget, PDU, Snmp }
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
 class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
 
   import SnmpStatusClient._
 
-  private[this] def transport = new DefaultUdpTransportMapping
-  private[this] def snmpClient = {
-    val inner = new Snmp(transport)
-    transport.listen()
-    (inner, transport)
-  }
-  private[this] def snmpTarget = {
+  private[this] def createTransport() = new DefaultUdpTransportMapping
+  private[this] def createSnmpTarget() = {
     val targetAddress = GenericAddress.parse(s"udp:$ip/161")
     val target = new CommunityTarget
     target.setCommunity(new OctetString("public"))
@@ -30,6 +26,19 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
     target.setTimeout(1500)
     target.setVersion(SnmpConstants.version2c)
     target
+  }
+  private[this] def createSnmpClient() = {
+    val transport = createTransport()
+    val inner = new Snmp(transport)
+    transport.listen()
+    try {
+      val target = createSnmpTarget()
+      (inner, transport, target)
+    } catch {
+      case NonFatal(t) =>
+        transport.close()
+        throw t
+    }
   }
 
   private def request(
@@ -43,13 +52,18 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
     pdu.add(new VariableBinding(oid))
     pdu.setType(typ)
     snmp.listen()
-    val event = snmp.send(pdu, target, null)
-    val response = event.getResponse
-    Try(response.get(0))
+    try {
+      val event = snmp.send(pdu, target, null)
+      val response = event.getResponse
+      Try(response.get(0))
+    } finally {
+      snmp.close()
+    }
   }
 
   private def nameOid(name: String) = {
-    new OID("1.3.6.1.4.1.2699.1.1.1.2.1.1.3.49.48").append(new OctetString(name).toSubIndex(true))
+    new OID("1.3.6.1.4.1.2699.1.1.1.2.1.1.3.49.48")
+        .append(new OctetString(name).toSubIndex(true))
   }
 
   private def statusOid(jobIndex: Int) = {
@@ -75,10 +89,12 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
           if (oid.startsWith(current)) {
             Success(ret.getVariable.toInt)
           } else if (currentTries >= 0) {
-            TimeUnit.MILLISECONDS.sleep(1000)
-            call(current, currentTries - 1)
+            Try(TimeUnit.MILLISECONDS.sleep(1000)) match {
+              case Success(_) => call(current, currentTries - 1)
+              case Failure(t) => Failure(t)
+            }
           } else {
-            Failure(new JobIndexNotFoundException)
+            Failure(JobIndexNotFoundException)
           }
         case Failure(t) => Failure(t)
       }
@@ -91,7 +107,8 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       snmp: Snmp,
       target: CommunityTarget,
       transportMapping: DefaultUdpTransportMapping,
-      jobIndex: Int): Try[JobState] = {
+      jobIndex: Int
+  ): Try[JobState] = {
     Try(
       request(snmp, target, transportMapping, statusOid(jobIndex), PDU.GET)
           .map(status => JobState.fromInt(status.getVariable.toInt))
@@ -102,7 +119,8 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       snmp: Snmp,
       target: CommunityTarget,
       transportMapping: DefaultUdpTransportMapping,
-      jobIndex: Int): Try[JobReason] = {
+      jobIndex: Int
+  ): Try[JobReason] = {
     Try(
       request(snmp, target, transportMapping, reasonOid(jobIndex), PDU.GET)
           .map(status => JobReason.fromInt(status.getVariable.toInt))
@@ -118,44 +136,61 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       state: JobState
   ): Try[Unit] = {
     state match {
+      // FIXME: we need to abort all jobs after that
+      case JobState.ProcessingStopped => Failure(PrintProcessingStoppedException)
       case JobState.Unknown | JobState.Completed | JobState.Aborted | JobState.Canceled => Success(())
       case _ =>
-        TimeUnit.MILLISECONDS.sleep(750)
-        status(snmp, target, transportMapping, index) match {
-          case Success(newState) => poll(snmp, target, transportMapping, index, newState)
+        Try(TimeUnit.MILLISECONDS.sleep(750)) match {
+          case Success(_) =>
+            status(snmp, target, transportMapping, index) match {
+              case Success(newState) => poll(snmp, target, transportMapping, index, newState)
+              case Failure(t) => Failure(t)
+            }
           case Failure(t) => Failure(t)
         }
     }
   }
 
+  private def findFirstJobReason(
+      snmp: Snmp,
+      target: CommunityTarget,
+      transportMapping: DefaultUdpTransportMapping,
+      name: String
+  ) = {
+    for {
+      index <- findJobIndex(snmp, target, transportMapping, name)
+      state <- status(snmp, target, transportMapping, index)
+    } yield (index, state)
+  }
+
   def pollStatus(name: String): Try[JobReason] = {
-    Try {
-      val (snmp, transport) = snmpClient
-      val target = snmpTarget
-      (snmp, transport, target)
-    }.flatMap {
-      case (snmp, transport, target) =>
-        val jobReason = (for {
-          index <- findJobIndex(snmp, target, transport, name)
-          state <- status(snmp, target, transport, index)
-        } yield (index, state)).flatMap {
-          case (index, state) =>
-            poll(snmp, target, transport, index, state).map(_ => index)
-        }.flatMap { index =>
-          reason(snmp, target, transport, index)
+    Try(createSnmpClient())
+        .flatMap {
+          case (snmp, transport, target) =>
+            val jobReason = findFirstJobReason(snmp, target, transport, name)
+                .flatMap {
+                  case (index, state) =>
+                    poll(snmp, target, transport, index, state).map(_ => index)
+                }
+                .flatMap { index =>
+                  reason(snmp, target, transport, index)
+                }
+
+            Thread.sleep(60000)
+            snmp.close()
+            transport.close()
+            jobReason
         }
-        snmp.close()
-        transport.close()
-        jobReason
-    }.recover {
-      case _: JobIndexNotFoundException => JobReason.Unknown
-    }
+        .recover {
+          case JobIndexNotFoundException => JobReason.Unknown
+        }
   }
 
 }
 
 object SnmpStatusClient {
 
-  class JobIndexNotFoundException extends Exception
+  case object PrintProcessingStoppedException extends Exception
+  case object JobIndexNotFoundException extends Exception
 
 }

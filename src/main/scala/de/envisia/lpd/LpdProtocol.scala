@@ -59,7 +59,13 @@ private[lpd] object LpdProtocol {
 
 }
 
-private[lpd] final class LpdProtocol(fileSize: Long, username: String, queue: String, jobId: Int, hostname: String, filename: String) extends GraphStage[BidiShape[ByteString, ByteString, ByteString, ByteString]] {
+private[lpd] final class LpdProtocol(
+    fileSize: Long,
+    username: String,
+    queue: String,
+    hostname: String,
+    filename: String
+) extends GraphStage[BidiShape[ByteString, ByteString, ByteString, ByteString]] {
 
   import LpdProtocol._
 

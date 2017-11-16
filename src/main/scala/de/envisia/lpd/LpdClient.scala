@@ -12,26 +12,15 @@ import akka.util.ByteString
 
 import scala.concurrent.Future
 
-class LpdClient(hostname: String = "akka")(implicit
-    system: ActorSystem,
-    mat: Materializer) {
+class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Materializer) {
 
   import LpdProtocol._
 
   private def flow(host: String, port: Int = 515) = {
     val remote = InetSocketAddress.createUnresolved(host, port)
+    // Currently a LPD Client normally uses a well known port for recieving data
     // val local = None // Some(new InetSocketAddress(1025))
     Tcp().outgoingConnection(remote, None)
-  }
-
-  private val atomicInt = new AtomicInteger(0)
-
-  private def getJobId: Int = {
-    // creates a 3 digit job id
-    atomicInt.updateAndGet { value: Int =>
-      val newValue = value + 1
-      if (newValue == 999) 1 else newValue
-    }
   }
 
   def shortQueue(host: String, port: Int, queue: String, additional: String): Future[String] = {
@@ -56,30 +45,19 @@ class LpdClient(hostname: String = "akka")(implicit
     this.queue(host, 515, queue, additional)
   }
 
-  def print(
-    host: String,
-    username: String,
-    queue: String,
-    path: Path,
-    filename: String): Future[Done] = {
+  def removeJobs(host: String, port: Int, queue: String, agent: String): Future[Done] = {
+    Source
+      .single(createExtendedCommand(5, queue, agent))
+      .via(flow(host, port))
+      .runWith(Sink.ignore)
+  }
+
+  def print(host: String, username: String, queue: String, path: Path, filename: String): Future[Done] = {
     print(host, 515, username, queue, path, filename)
   }
 
-  def print(
-    host: String,
-    port: Int,
-    username: String,
-    queue: String,
-    path: Path,
-    filename: String): Future[Done] = {
-    print(
-      host,
-      port,
-      username,
-      queue,
-      FileIO.fromPath(path, chunkSize = 4096),
-      Files.size(path),
-      filename)
+  def print(host: String, port: Int, username: String, queue: String, path: Path, filename: String): Future[Done] = {
+    print(host, port, username, queue, FileIO.fromPath(path, chunkSize = 4096), Files.size(path), filename)
   }
 
   def print(
@@ -88,7 +66,8 @@ class LpdClient(hostname: String = "akka")(implicit
     queue: String,
     source: Source[ByteString, _],
     size: Long,
-    filename: String): Future[Done] = {
+    filename: String
+  ): Future[Done] = {
     print(host, 515, username, queue, source, size, filename)
   }
 
@@ -101,11 +80,8 @@ class LpdClient(hostname: String = "akka")(implicit
     size: Long,
     filename: String
   ): Future[Done] = {
-    val jobId = getJobId
-
     val connectionFlow: Flow[ByteString, ByteString, Future[Tcp.OutgoingConnection]] = {
-      flow(host, port).join(
-        new LpdProtocol(size, username, queue, jobId, hostname, filename))
+      flow(host, port).join(new LpdProtocol(size, username, queue, hostname, filename))
     }
 
     source
