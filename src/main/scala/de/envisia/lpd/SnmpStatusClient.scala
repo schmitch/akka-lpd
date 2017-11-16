@@ -133,9 +133,6 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       state: JobState
   ): Try[Unit] = {
     state match {
-      // FIXME: we need to abort all jobs after that
-      case JobState.ProcessingStopped =>
-        Failure(PrintProcessingStoppedException)
       case JobState.Unknown | JobState.Completed | JobState.Aborted |
           JobState.Canceled =>
         Success(())
