@@ -21,23 +21,33 @@ object TestClient {
     val uuid = s"JOB2"
     val ip = "192.168.179.3"
 
-    //    val ret = Await.result(
-    //      client
-    //        .print(ip, uuid, "print", path, "TestKRONEN.pdf")
-    //        .recover {
-    //          case e: Exception => e.printStackTrace(); Done
-    //        },
-    //      10.minutes)
+    val ret = Await.result(
+      client
+        .print(ip, uuid, "print", path, "TestKRONEN.pdf")
+        .recover {
+          case e: Exception => e.printStackTrace(); Done
+        },
+      10.minutes)
 
     // println(s"Ret")
     println(s"UUID: $uuid")
-    for { _ <- 1 to 10000000 } yield {
-      val snmpClient = new SnmpStatusClient(ip)
-      snmpClient.pollStatus(uuid) match {
-        case Success(reason) => println(s"JobReason: $reason")
-        case Failure(t) => t.printStackTrace()
-      }
+    //    for { _ <- 1 to 10000000 } yield {
+    val snmpClient = new SnmpStatusClient(ip)
+    snmpClient.pollStatus(uuid) match {
+      case Success(reason) => println(s"JobReason: $reason")
+      case Failure(t) => t.printStackTrace()
     }
+    //    }
+
+    val ret2 = Await.result(
+      client
+        .removeJobs(ip, 515, "print", uuid)
+        .recover {
+          case e: Exception => e.printStackTrace(); Done
+        },
+      10.minutes)
+
+    println(ret2)
 
     Thread.sleep(10000)
 

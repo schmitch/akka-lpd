@@ -45,6 +45,10 @@ class LpdClient(hostname: String = "akka")(implicit system: ActorSystem, mat: Ma
     this.queue(host, 515, queue, additional)
   }
 
+  def removeJobs(host: String, queue: String, agent: String): Future[Done] = {
+    removeJobs(host, 515, queue, agent)
+  }
+
   def removeJobs(host: String, port: Int, queue: String, agent: String): Future[Done] = {
     Source
       .single(createExtendedCommand(5, queue, agent))
