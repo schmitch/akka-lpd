@@ -177,10 +177,7 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
               reason(snmp, target, transport, index)
             }
 
-          // Thread.sleep(60000)
-          println(s"Is Listening1: ${transport.isListening}")
           snmp.close()
-          println(s"Is Listening2: ${transport.isListening}")
           transport.close()
           jobReason
       }
