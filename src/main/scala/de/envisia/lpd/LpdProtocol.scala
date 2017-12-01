@@ -6,8 +6,11 @@ import java.nio.charset.StandardCharsets
 import akka.stream._
 import akka.stream.stage.{ GraphStage, GraphStageLogic, InHandler, OutHandler }
 import akka.util.ByteString
+import org.slf4j.LoggerFactory
 
 private[lpd] object LpdProtocol {
+
+  private val logger = LoggerFactory.getLogger("de.envisia.lpd")
 
   private val charset = StandardCharsets.UTF_8
 
@@ -110,7 +113,9 @@ private[lpd] final class LpdProtocol(
     setHandler(lpdIn, new InHandler {
       override def onPush(): Unit = {
         val ele = grab(lpdIn)
-        if (ele == EMPTY && state < 4) {
+        val status = ele == EMPTY
+        logger.debug(s"Lpd State: $state - Current Status: $status")
+        if (status && state < 4) {
           state = nextState
           if (wasPulled) {
             sendState()
