@@ -3,18 +3,21 @@ package de.envisia.lpd
 import java.util.concurrent.TimeUnit
 
 import akka.stream.Materializer
+import org.slf4j.LoggerFactory
 import org.snmp4j.mp.SnmpConstants
-import org.snmp4j.smi.{GenericAddress, OID, OctetString, VariableBinding}
+import org.snmp4j.smi.{ GenericAddress, OID, OctetString, VariableBinding }
 import org.snmp4j.transport.DefaultUdpTransportMapping
-import org.snmp4j.{CommunityTarget, PDU, Snmp}
+import org.snmp4j.{ CommunityTarget, PDU, Snmp }
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
 
   import SnmpStatusClient._
+
+  private val logger = LoggerFactory.getLogger("de.envisia.lpd.status")
 
   private[this] def createTransport() = new DefaultUdpTransportMapping
   private[this] def createSnmpTarget() = {
@@ -132,9 +135,9 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       index: Int,
       state: JobState
   ): Try[Unit] = {
+    logger.debug(s"Poll State: $state")
     state match {
-      case JobState.Unknown | JobState.Completed | JobState.Aborted |
-          JobState.Canceled =>
+      case JobState.Unknown | JobState.Completed | JobState.Aborted | JobState.Canceled =>
         Success(())
       case _ =>
         Try(TimeUnit.MILLISECONDS.sleep(750)) match {
