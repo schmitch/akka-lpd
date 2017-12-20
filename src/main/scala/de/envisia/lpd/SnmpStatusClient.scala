@@ -63,7 +63,7 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
 
   private def nameOid(name: String) = {
     new OID("1.3.6.1.4.1.2699.1.1.1.2.1.1.3.49.48")
-      .append(new OctetString(name).toSubIndex(true))
+        .append(new OctetString(name).toSubIndex(true))
   }
 
   private def statusOid(jobIndex: Int) = {
@@ -110,9 +110,12 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
       jobIndex: Int
   ): Try[JobState] = {
     Try(
-      request(snmp, target, transportMapping, statusOid(jobIndex), PDU.GET)
-        .map(status => JobState.fromInt(status.getVariable.toInt))
-        .get)
+      request(snmp, target, transportMapping, statusOid(jobIndex), PDU.GET).map {
+        status =>
+          val statusInt = status.getVariable.toInt
+          logger.debug(s"Status Int: $statusInt")
+          JobState.fromInt(statusInt)
+      }.get)
   }
 
   def reason(
@@ -123,8 +126,8 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
   ): Try[JobReason] = {
     Try(
       request(snmp, target, transportMapping, reasonOid(jobIndex), PDU.GET)
-        .map(status => JobReason.fromInt(status.getVariable.toInt))
-        .get)
+          .map(status => JobReason.fromInt(status.getVariable.toInt))
+          .get)
   }
 
   @tailrec
@@ -137,7 +140,8 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
   ): Try[Unit] = {
     logger.debug(s"Poll State: $state")
     state match {
-      case JobState.Unknown | JobState.Completed | JobState.Aborted | JobState.Canceled =>
+      case JobState.Unknown | JobState.Completed | JobState.Aborted |
+           JobState.Canceled =>
         Success(())
       case _ =>
         Try(TimeUnit.MILLISECONDS.sleep(750)) match {
@@ -166,24 +170,24 @@ class SnmpStatusClient(ip: String)(implicit materializer: Materializer) {
 
   def pollStatus(name: String): Try[JobReason] = {
     Try(createSnmpClient())
-      .flatMap {
-        case (snmp, transport, target) =>
-          val jobReason = findFirstJobReason(snmp, target, transport, name)
-            .flatMap {
-              case (index, state) =>
-                poll(snmp, target, transport, index, state).map(_ => index)
-            }
-            .flatMap { index =>
-              reason(snmp, target, transport, index)
-            }
+        .flatMap {
+          case (snmp, transport, target) =>
+            val jobReason = findFirstJobReason(snmp, target, transport, name)
+                .flatMap {
+                  case (index, state) =>
+                    poll(snmp, target, transport, index, state).map(_ => index)
+                }
+                .flatMap { index =>
+                  reason(snmp, target, transport, index)
+                }
 
-          snmp.close()
-          transport.close()
-          jobReason
-      }
-      .recover {
-        case JobIndexNotFoundException => JobReason.Unknown
-      }
+            snmp.close()
+            transport.close()
+            jobReason
+        }
+        .recover {
+          case JobIndexNotFoundException => JobReason.Unknown
+        }
   }
 
 }
