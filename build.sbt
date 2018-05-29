@@ -6,7 +6,7 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 lazy val commonSettings = Seq(
   updateOptions := updateOptions.value.withGigahorse(false),
   organization := "de.envisia",
-  scalaVersion := "2.12.4",
+  scalaVersion := "2.12.6",
   scalacOptions in(Compile, doc) ++= Seq(
     "-target:jvm-1.8",
     "-deprecation",
@@ -36,7 +36,7 @@ lazy val `akka-lpd` = (project in file("."))
     .settings(
       libraryDependencies ++= Seq(
         "org.slf4j" % "slf4j-api" % "1.7.25",
-        "org.snmp4j" % "snmp4j" % "2.5.8",
+        "org.snmp4j" % "snmp4j" % "2.6.2",
         akka,
         scalaTest % Test
       )

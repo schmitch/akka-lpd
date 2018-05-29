@@ -72,10 +72,10 @@ private[lpd] final class LpdProtocol(
 
   import LpdProtocol._
 
-  private val lpdIn = Inlet[ByteString]("Lpd.in")
+  private val tcpIn = Inlet[ByteString]("Lpd.in")
   private val lpdOut = Outlet[ByteString]("Lpd.out")
 
-  private val tcpIn = Inlet[ByteString]("Tcp.in")
+  private val fileIn = Inlet[ByteString]("Tcp.in")
   private val tcpOut = Outlet[ByteString]("Tcp.out")
 
   // FIXME: this would be correct according to the spec: s"${"%03d".format(jobId)}$filename"
@@ -83,7 +83,7 @@ private[lpd] final class LpdProtocol(
   private val bundledName = filename
   private val controlFile = buildControlFile(hostname, username, bundledName)
 
-  override def shape: BidiShape[ByteString, ByteString, ByteString, ByteString] = BidiShape.of(lpdIn, lpdOut, tcpIn, tcpOut)
+  override def shape: BidiShape[ByteString, ByteString, ByteString, ByteString] = BidiShape.of(tcpIn, lpdOut, fileIn, tcpOut)
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
     private var state: Int = 0
     private var nextState: Int = 0
@@ -110,9 +110,9 @@ private[lpd] final class LpdProtocol(
       }
     }
 
-    setHandler(lpdIn, new InHandler {
+    setHandler(tcpIn, new InHandler {
       override def onPush(): Unit = {
-        val ele = grab(lpdIn)
+        val ele = grab(tcpIn)
         val status = ele == EMPTY
         logger.debug(s"Lpd State: $state - Current Status: $status")
         if (status && state < 4) {
@@ -142,28 +142,38 @@ private[lpd] final class LpdProtocol(
 
     setHandler(lpdOut, new OutHandler {
       override def onPull(): Unit = {
-        pull(lpdIn)
+        pull(tcpIn)
         if (state == 4 && state == nextState) {
-          if (!isClosed(tcpIn)) {
-            pull(tcpIn)
+          if (!isClosed(fileIn)) {
+            pull(fileIn)
           }
         }
       }
     })
 
-    setHandler(tcpIn, new InHandler {
+    setHandler(fileIn, new InHandler {
+      override def onUpstreamFailure(ex: Throwable): Unit = {
+        logger.error("Failure in TcpIn", ex)
+        failStage(ex)
+      }
 
       override def onUpstreamFinish(): Unit = {
         // if the file would even have a last chunk of 4096
-        // we still need to sent a zero byte end
-        if (!fileEndSent) {
+        // we still need to send a zero byte end
+        // however we can only send it, if the tcpOut port is available
+        // if this is not the case, we delay sending the end bit until
+        // another pull on the tcp port happens
+        if (isAvailable(tcpOut) && !fileEndSent) {
           push(tcpOut, EMPTY)
+          fileEndSent = true
         }
-        complete(tcpOut)
+        if (fileEndSent) {
+          complete(tcpOut)
+        }
       }
 
       override def onPush(): Unit = {
-        val ele = grab(tcpIn)
+        val ele = grab(fileIn)
         if (ele.size < 4096) {
           fileEndSent = true
           push(tcpOut, ele ++ EMPTY)
@@ -181,8 +191,14 @@ private[lpd] final class LpdProtocol(
             sendState()
           } else {
             // pulls data from the source
-            if (!isClosed(tcpIn)) {
-              pull(tcpIn)
+            // if the source is drained and we do not have the fileEndSent flag set
+            // we will actually send it now
+            if (!isClosed(fileIn)) {
+              pull(fileIn)
+            } else if (!fileEndSent) {
+              push(tcpOut, EMPTY)
+              fileEndSent = true
+              complete(tcpOut)
             }
           }
         } else {
